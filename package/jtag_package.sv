@@ -1,3 +1,6 @@
+
+`include "jtag_if.sv"
+
 package jtag_pkg;
     import uvm_pkg::*;
     `include "uvm_macros.svh"
@@ -9,7 +12,7 @@ package jtag_pkg;
     `include "jtag_monitor.sv"
     `include "jtag_sequencer.sv"
     `include "jtag_sequence.sv"
-    `include "jtag_agent.sv"
     `include "jtag_scoreboard.sv"
     `include "jtag_coverage.sv"
+    `include "jtag_agent.sv"
 endpackage

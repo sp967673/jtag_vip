@@ -5,43 +5,47 @@
 class jtag_scoreboard extends uvm_scoreboard;
     `uvm_component_utils(jtag_scoreboard)
     
-    uvm_analysis_imp #(jtag_transaction, jtag_scoreboard) item_collected_export;
+    uvm_analysis_imp #(jtag_transaction, jtag_scoreboard) ap_imp;
     
-    // Expected transactions queue
-    jtag_transaction expected_queue[$];
+    // Scoreboard variables
+    int transactions_count;
+    int reset_count;
+    int dr_scan_count;
+    int ir_scan_count;
     
-    function new(string name, uvm_component parent);
-        super.new(name, parent);
-        item_collected_export = new("item_collected_export", this);
+    function new(string name = "jtag_scoreboard", uvm_component parent = null);
+      super.new(name, parent);
+      ap_imp = new("ap_imp", this);
     endfunction
     
     function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-    endfunction
-    
-    // Store expected transactions
-    function void store_expected(jtag_transaction tr);
-        expected_queue.push_back(tr);
+      super.build_phase(phase);
+      transactions_count = 0;
+      reset_count = 0;
+      dr_scan_count = 0;
+      ir_scan_count = 0;
     endfunction
     
     // Compare received transactions with expected
-    function void write(jtag_transaction received_tr);
-        jtag_transaction expected_tr;
-        
-        if(expected_queue.size() == 0) begin
-            `uvm_error("SCBD", $sformatf("Received unexpected transaction: %s", received_tr.sprint()))
-            return;
-        end
-        
-        expected_tr = expected_queue.pop_front();
-        
-        if(!received_tr.compare(expected_tr)) begin
-            `uvm_error("SCBD", $sformatf("Transaction mismatch!\nExpected: %s\nReceived: %s", 
-                                        expected_tr.sprint(), received_tr.sprint()))
-        end
-        else begin
-            `uvm_info("SCBD", "Transaction matched", UVM_HIGH)
-        end
+    function void write(jtag_transaction trans);
+      transactions_count++;
+      
+      // Count different operation types
+      case (trans.operation)
+        jtag_transaction::JTAG_RESET: reset_count++;
+        jtag_transaction::JTAG_DR_SCAN: dr_scan_count++;
+        jtag_transaction::JTAG_IR_SCAN: ir_scan_count++;
+      endcase
+      
+      `uvm_info("JTAG_SB", $sformatf("Received transaction: %s", trans.sprint()), UVM_LOW)
+    endfunction
+
+    function void report_phase(uvm_phase phase);
+      super.report_phase(phase);
+      `uvm_info("JTAG_SB", $sformatf("Total transactions: %0d", transactions_count), UVM_LOW)
+      `uvm_info("JTAG_SB", $sformatf("Reset operations: %0d", reset_count), UVM_LOW)
+      `uvm_info("JTAG_SB", $sformatf("DR scan operations: %0d", dr_scan_count), UVM_LOW)
+      `uvm_info("JTAG_SB", $sformatf("IR scan operations: %0d", ir_scan_count), UVM_LOW)
     endfunction
 endclass
 

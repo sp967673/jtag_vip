@@ -1,41 +1,42 @@
 
-`ifndef JTAG_DRIVER_SV
-`define JTAG_DRIVER_SV
+`ifndef JTAG_MONITOR_SV
+`define JTAG_MONITOR_SV
 
 class jtag_monitor extends uvm_monitor;
-    `uvm_component_utils(jtag_monitor)
-    
-    virtual jtag_if vif;
-    jtag_config cfg;
-    uvm_analysis_port #(jtag_transaction) ap;
-    
-    function new(string name, uvm_component parent);
-        super.new(name, parent);
-        ap = new("ap", this);
-    endfunction
-    
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        if(!uvm_config_db#(virtual jtag_if)::get(this, "", "vif", vif)) begin
-            `uvm_fatal("NOVIF", "Virtual interface not set")
-        end
-        if(!uvm_config_db#(jtag_config)::get(this, "", "cfg", cfg)) begin
-            `uvm_fatal("NOCFG", "Config object not set")
-        end
-    endfunction
-    
-    task run_phase(uvm_phase phase);
-        forever begin
-            jtag_transaction tr;
-            monitor_tap(tr);
-            ap.write(tr);
-        end
-    endtask
-    
-    task monitor_tap(output jtag_transaction tr);
-        // Implementation to monitor JTAG TAP state machine and capture transactions
-        // This would track the TAP state and capture IR/DR scans
-    endtask
+  
+  virtual jtag_if vif;
+  jtag_config cfg;
+  
+  uvm_analysis_port #(jtag_transaction) ap;
+  
+  `uvm_component_utils(jtag_monitor)
+  
+  function new(string name = "jtag_monitor", uvm_component parent = null);
+    super.new(name, parent);
+    ap = new("ap", this);
+  endfunction
+  
+  virtual function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if (!uvm_config_db#(jtag_config)::get(this, "", "cfg", cfg))
+        `uvm_fatal("NO_CFG", "Configuration object not found")
+    if (cfg.vif == null)
+        `uvm_fatal("NO_VIF", "Virtual interface is null in configuration")
+    vif = cfg.vif;
+  endfunction
+  
+  virtual task run_phase(uvm_phase phase);
+    jtag_transaction trans;
+    forever begin
+      @(posedge vif.tck);
+      trans = jtag_transaction::type_id::create("trans");
+      trans.tms = vif.tms;
+      trans.tdi = vif.tdi;
+      trans.tdo = vif.tdo;
+      ap.write(trans);
+    end
+  endtask
+  
 endclass
 
-`endif //JTAG_DRIVER_SV
+`endif //JTAG_MONITOR_SV

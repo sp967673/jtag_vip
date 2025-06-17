@@ -2,19 +2,25 @@
 `ifndef JTAG_IF_SV
 `define JTAG_IF_SV
 
-interface jtag_if(input logic tck, input logic trst_n);
+interface jtag_if(input logic clk);
+    logic tck;
+    logic trst_n;
     logic tms;
     logic tdi;
     logic tdo;
     logic tdo_en; // TDO enable (for bidirectional pin implementation)
 
+    assign tck = clk;
+
     // Clocking blocks for driver and monitor synchronization
     clocking drv_cb @(posedge tck);
+        default input #1step output #1step;
         output tms, tdi;
         input tdo;
     endclocking
 
     clocking mon_cb @(posedge tck);
+        default input #1step output #1step;
         input tms, tdi, tdo;
     endclocking
 
